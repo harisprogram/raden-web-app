@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Modern Task Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 1rem 2rem;
+      background: rgba(0, 0, 0, 0.2);
+      font-size: 1.5rem;
+      font-weight: 600;
+      backdrop-filter: blur(10px);
+    }
+    .container {
+      flex: 1;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 1rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+    input[type="text"] {
+      width: 80%;
+      padding: 0.8rem;
+      border-radius: 0.5rem;
+      border: none;
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+    button {
+      padding: 0.8rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      background: #48bb78;
+      color: white;
+      cursor: pointer;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.8rem;
+      margin-top: 1rem;
+      border-radius: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    li.completed {
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+    .task-actions button {
+      margin-left: 0.5rem;
+      background: #e53e3e;
+    }
+    .edit-btn {
+      background: #3182ce;
+    }
+  </style>
+</head>
+<body>
+  <header>📝 My Task Manager</header>
+  <div class="container">
+    <input type="text" id="taskInput" placeholder="Enter new task..." />
+    <button onclick="addTask()">Add</button>
+    <ul id="taskList"></ul>
+  </div>
+
+  <script>
+    async function fetchTasks() {
+      const res = await fetch('/api/tasks');
+      return res.json();
+    }
+
+    async function renderTasks() {
+      const tasks = await fetchTasks();
+      const list = document.getElementById('taskList');
+      list.innerHTML = '';
+      tasks.forEach((task, index) => {
+        const li = document.createElement('li');
+        li.className = task.completed ? 'completed' : '';
+        li.innerHTML = \`
+          <span onclick="toggleTask(\${index})">\${task.text}</span>
+          <div class="task-actions">
+            <button class="edit-btn" onclick="editTask(\${index}, '\${task.text.replace(/'/g, "\'")}')">✏️</button>
+            <button onclick="deleteTask(\${index})">🗑️</button>
+          </div>
+        \`;
+        list.appendChild(li);
+      });
+    }
+
+    async function addTask() {
+      const input = document.getElementById('taskInput');
+      if (!input.value.trim()) return;
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: input.value.trim() })
+      });
+      input.value = '';
+      renderTasks();
+    }
+
+    async function toggleTask(index) {
+      await fetch(\`/api/tasks/\${index}\`, { method: 'PUT' });
+      renderTasks();
+    }
+
+    async function deleteTask(index) {
+      await fetch(\`/api/tasks/\${index}\`, { method: 'DELETE' });
+      renderTasks();
+    }
+
+    async function editTask(index, oldText) {
+      const newText = prompt('Edit task:', oldText);
+      if (newText && newText.trim() !== '') {
+        await fetch(\`/api/tasks/\${index}/text\`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: newText.trim() })
+        });
+        renderTasks();
+      }
+    }
+
+    renderTasks();
+  </script>
+</body>
+</html>
